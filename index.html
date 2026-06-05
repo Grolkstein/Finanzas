@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mis Finanzas</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Georgia, serif; background: #0f0e0c; color: #f5f0e8; max-width: 420px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; }
+
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; background: #141210; border-top: 1px solid #2a2519; display: flex; z-index: 100; }
+.bottom-nav button { flex: 1; padding: 12px 0 10px; background: none; border: none; color: #4a4535; font-family: sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.bottom-nav button .icon { font-size: 20px; }
+.bottom-nav button.active { color: #c9a84c; }
+
+.header { padding: 24px 20px 14px; border-bottom: 1px solid #2a2519; display: flex; justify-content: space-between; align-items: flex-start; }
+.header-title small { font-size: 10px; letter-spacing: 4px; color: #c9a84c; text-transform: uppercase; font-family: sans-serif; display: block; margin-bottom: 3px; }
+.header-title h1 { font-size: 24px; font-weight: normal; }
+.month-select { background: #1a1810; border: 1px solid #2a2519; color: #c9a84c; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-family: sans-serif; margin-top: 6px; }
+
+.sync-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; margin-left: 6px; vertical-align: middle; }
+.sync-dot.off { background: #e05a5a; }
+.sync-dot.loading { background: #c9a84c; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.view { display: none; padding: 20px; }
+.view.active { display: block; }
+
+.card { background: linear-gradient(135deg, #1e1a10, #2a2213); border: 1px solid #3a3020; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.card .label { font-size: 10px; letter-spacing: 3px; color: #6b6350; text-transform: uppercase; font-family: sans-serif; margin-bottom: 6px; }
+.card .amount { font-size: 32px; color: #c9a84c; }
+.card .sub { font-size: 12px; color: #4a4535; font-family: sans-serif; margin-top: 4px; }
+
+.cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.card-sm { background: #1a1810; border: 1px solid #2a2519; border-radius: 12px; padding: 14px; }
+.card-sm .label { font-size: 9px; letter-spacing: 2px; color: #6b6350; text-transform: uppercase; font-family: sans-serif; margin-bottom: 4px; }
+.card-sm .amount { font-size: 18px; font-family: sans-serif; }
+
+.section-title { font-size: 10px; letter-spacing: 3px; color: #6b6350; text-transform: uppercase; font-family: sans-serif; margin-bottom: 14px; margin-top: 20px; }
+
+.progress-wrap { margin-bottom: 12px; }
+.progress-info { display: flex; justify-content: space-between; font-family: sans-serif; font-size: 12px; margin-bottom: 5px; }
+.progress-name { color: #d4c9a8; }
+.progress-val { color: #c9a84c; }
+.bar-bg { height: 5px; background: #1e1a10; border-radius: 3px; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+.expense-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #1a1710; }
+.expense-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.expense-info { flex: 1; min-width: 0; }
+.expense-desc { font-family: sans-serif; font-size: 13px; color: #d4c9a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.expense-meta { font-family: sans-serif; font-size: 10px; color: #4a4535; }
+.expense-right { text-align: right; flex-shrink: 0; }
+.expense-amount { font-family: sans-serif; font-size: 13px; color: #c9a84c; }
+.btn-delete { background: none; border: none; color: #2a2519; font-size: 10px; cursor: pointer; font-family: sans-serif; padding: 0; margin-top: 1px; display: block; }
+.btn-delete:hover { color: #e05a5a; }
+
+.empty { text-align: center; color: #3a3020; padding: 36px 0; font-family: sans-serif; font-size: 13px; }
+.empty .icon { font-size: 32px; margin-bottom: 10px; }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 10px; letter-spacing: 2px; color: #6b6350; text-transform: uppercase; font-family: sans-serif; margin-bottom: 7px; }
+.field input, .field select { width: 100%; background: #1a1810; border: 1px solid #2a2519; border-radius: 10px; padding: 11px 13px; color: #f5f0e8; font-family: sans-serif; font-size: 14px; outline: none; }
+.field input.big { color: #c9a84c; font-size: 22px; }
+.field input[type=date] { color-scheme: dark; }
+.field select { cursor: pointer; }
+
+.cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.cat-btn { background: #1a1810; border: 1px solid #2a2519; border-radius: 9px; padding: 9px 3px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cat-btn.selected { border-color: var(--cc); background: color-mix(in srgb, var(--cc) 18%, #1a1810); }
+.cat-btn .ce { font-size: 18px; }
+.cat-btn .cl { font-size: 8px; color: #4a4535; font-family: sans-serif; }
+.cat-btn.selected .cl { color: var(--cc); }
+
+.btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #c9a84c, #e8c96a); border: none; border-radius: 11px; color: #0f0e0c; font-family: sans-serif; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; margin-top: 8px; }
+.btn-primary:disabled { background: #1e1a10; color: #3a3020; cursor: not-allowed; }
+
+.sueldo-bar { height: 10px; border-radius: 5px; background: #1e1a10; margin: 12px 0; overflow: hidden; display: flex; gap: 2px; }
+.sueldo-seg { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+.breakdown-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #1a1710; font-family: sans-serif; font-size: 13px; }
+.breakdown-row .name { color: #d4c9a8; display: flex; align-items: center; gap: 7px; }
+.breakdown-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.breakdown-row .val { color: #c9a84c; }
+.breakdown-row .val.negative { color: #e05a5a; }
+.breakdown-row .val.positive { color: #4ade80; }
+
+.inner-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.inner-tab { flex: 1; padding: 8px; background: #1a1810; border: 1px solid #2a2519; border-radius: 8px; color: #4a4535; font-family: sans-serif; font-size: 11px; cursor: pointer; text-align: center; letter-spacing: 1px; text-transform: uppercase; }
+.inner-tab.active { background: #2a2213; border-color: #c9a84c; color: #c9a84c; }
+
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #c9a84c; color: #0f0e0c; padding: 9px 20px; border-radius: 30px; font-weight: bold; font-size: 12px; font-family: sans-serif; box-shadow: 0 4px 20px rgba(201,168,76,0.4); z-index: 999; display: none; white-space: nowrap; }
+
+#loadingScreen { position:fixed; inset:0; background:#0f0e0c; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; gap:14px; }
+#loadingScreen .spin { width:32px; height:32px; border:3px solid #2a2519; border-top-color:#c9a84c; border-radius:50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#loadingScreen p { font-family:sans-serif; font-size:13px; color:#6b6350; }
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">
+  <div class="spin"></div>
+  <p>Conectando con Firebase…</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="header">
+  <div class="header-title">
+    <small>Mis</small>
+    <h1>Finanzas <span class="sync-dot loading" id="syncDot" title="Sincronizando"></span></h1>
+  </div>
+  <select class="month-select" id="monthSelect"></select>
+</div>
+
+<!-- RESUMEN -->
+<div class="view active" id="view-resumen">
+  <div class="card">
+    <div class="label">Saldo disponible</div>
+    <div class="amount" id="res-saldo">$0</div>
+    <div class="sub" id="res-sub">del sueldo este mes</div>
+  </div>
+  <div class="cards-row">
+    <div class="card-sm"><div class="label">Gastos fijos</div><div class="amount" id="res-fijos" style="color:#e05a5a">$0</div></div>
+    <div class="card-sm"><div class="label">Gastos variables</div><div class="amount" id="res-variables" style="color:#f97316">$0</div></div>
+    <div class="card-sm"><div class="label">Ahorro</div><div class="amount" id="res-ahorro" style="color:#4ade80">$0</div></div>
+    <div class="card-sm"><div class="label">Inversión</div><div class="amount" id="res-inversion" style="color:#06b6d4">$0</div></div>
+  </div>
+  <div id="res-catBreakdown"></div>
+</div>
+
+<!-- AGREGAR -->
+<div class="view" id="view-agregar">
+  <div class="inner-tabs">
+    <button class="inner-tab active" onclick="switchAddTab('gasto')">Gasto</button>
+    <button class="inner-tab" onclick="switchAddTab('ahorro')">Ahorro</button>
+    <button class="inner-tab" onclick="switchAddTab('inversion')">Inversión</button>
+    <button class="inner-tab" onclick="switchAddTab('fijo')">Fijo</button>
+  </div>
+  <div id="addTabContent"></div>
+</div>
+
+<!-- HISTORIAL -->
+<div class="view" id="view-historial">
+  <div class="inner-tabs">
+    <button class="inner-tab active" onclick="switchHistTab('gastos')">Gastos</button>
+    <button class="inner-tab" onclick="switchHistTab('fijos')">Fijos</button>
+    <button class="inner-tab" onclick="switchHistTab('ahorro')">Ahorro</button>
+    <button class="inner-tab" onclick="switchHistTab('inversion')">Inversión</button>
+  </div>
+  <div id="histContent"></div>
+</div>
+
+<!-- SUELDO -->
+<div class="view" id="view-sueldo">
+  <div class="card">
+    <div class="label">Sueldo mensual</div>
+    <div class="amount" id="sue-monto">$0</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+      <input type="number" id="sueldoInput" placeholder="Ingresá tu sueldo" style="flex:1;background:#1a1810;border:1px solid #2a2519;border-radius:8px;padding:8px 12px;color:#f5f0e8;font-family:sans-serif;font-size:14px;outline:none">
+      <button onclick="saveSueldo()" style="padding:8px 14px;background:#c9a84c;border:none;border-radius:8px;color:#0f0e0c;font-family:sans-serif;font-size:12px;font-weight:bold;cursor:pointer">Guardar</button>
+    </div>
+  </div>
+  <div class="sueldo-bar" id="sueldoBar">
+    <div class="sueldo-seg" style="background:#e05a5a" id="bar-fijos"></div>
+    <div class="sueldo-seg" style="background:#f97316" id="bar-variables"></div>
+    <div class="sueldo-seg" style="background:#4ade80" id="bar-ahorro"></div>
+    <div class="sueldo-seg" style="background:#06b6d4" id="bar-inversion"></div>
+  </div>
+  <div id="sueldoBreakdown"></div>
+</div>
+
+<!-- DEUDAS -->
+<div class="view" id="view-deudas">
+  <div id="deudasSummary"></div>
+  <div class="section-title" style="margin-top:0">Nueva deuda</div>
+  <div class="field"><label>Descripción</label><input type="text" id="dDesc" placeholder="ej. Tarjeta Visa, préstamo…" oninput="updateDBtn()"></div>
+  <div class="field"><label>Monto total</label><input type="number" id="dAmt" class="big" placeholder="0" oninput="updateDBtn();calcCuota()"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="field"><label>Cant. cuotas</label><input type="number" id="dCuotas" placeholder="ej. 12" min="1" oninput="updateDBtn();calcCuota()"></div>
+    <div class="field"><label>Valor por cuota</label><input type="number" id="dValCuota" placeholder="Se calcula solo" style="color:#c9a84c;background:#1a1810;border:1px solid #2a2519;border-radius:10px;padding:11px 13px;width:100%;font-family:sans-serif;font-size:14px;outline:none" readonly></div>
+  </div>
+  <div style="font-family:sans-serif;font-size:11px;color:#4a4535;margin-bottom:16px;margin-top:-8px">Dejá cuotas vacío para pago libre.</div>
+  <button class="btn-primary" id="dBtn" onclick="addDeuda()" disabled>Agregar deuda</button>
+  <div class="section-title">Deudas</div>
+  <div id="deudasList"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="active" onclick="switchView('resumen')"><span class="icon">📊</span>Resumen</button>
+  <button onclick="switchView('agregar')"><span class="icon">＋</span>Agregar</button>
+  <button onclick="switchView('historial')"><span class="icon">📋</span>Historial</button>
+  <button onclick="switchView('sueldo')"><span class="icon">💰</span>Sueldo</button>
+  <button onclick="switchView('deudas')"><span class="icon">🔴</span>Deudas</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBsacSnjGdkwnU5tUtJ0Tj_L6_oLJNOEDw",
+  authDomain: "finanzas-app-9e0ec.firebaseapp.com",
+  projectId: "finanzas-app-9e0ec",
+  storageBucket: "finanzas-app-9e0ec.firebasestorage.app",
+  messagingSenderId: "154899431910",
+  appId: "1:154899431910:web:d6cf9c9bdeaa1ecddfd627",
+  measurementId: "G-9FN32EEB9Z"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const DOC_REF = doc(db, "finanzas", "datos");
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const CATS = [
+  { id:"alimentacion", label:"Alimentación", emoji:"🍽️", color:"#f97316" },
+  { id:"transporte",   label:"Transporte",   emoji:"🚌", color:"#3b82f6" },
+  { id:"salud",        label:"Salud",         emoji:"💊", color:"#22c55e" },
+  { id:"entretenimiento", label:"Entret.",   emoji:"🎬", color:"#a855f7" },
+  { id:"hogar",        label:"Hogar",         emoji:"🏠", color:"#ec4899" },
+  { id:"ropa",         label:"Ropa",          emoji:"👕", color:"#eab308" },
+  { id:"educacion",    label:"Educación",     emoji:"📚", color:"#06b6d4" },
+  { id:"otros",        label:"Otros",         emoji:"📦", color:"#6b7280" },
+];
+const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+let data = { sueldo:0, gastos:[], fijos:[], ahorros:[], inversiones:[], deudas:[] };
+let filterMonth = new Date().getMonth();
+let filterYear  = new Date().getFullYear();
+let selectedCat = "alimentacion";
+let addTab = "gasto";
+let histTab = "gastos";
+let isSaving = false;
+
+// ─── FIREBASE SYNC ───────────────────────────────────────────────────────────
+function setSyncDot(state) {
+  const dot = document.getElementById("syncDot");
+  dot.className = "sync-dot" + (state==="ok" ? "" : state==="error" ? " off" : " loading");
+  dot.title = state==="ok" ? "Sincronizado" : state==="error" ? "Sin conexión" : "Sincronizando…";
+}
+
+async function saveToFirebase() {
+  isSaving = true;
+  setSyncDot("loading");
+  try {
+    await setDoc(DOC_REF, data);
+    setSyncDot("ok");
+  } catch(e) {
+    console.error(e);
+    setSyncDot("error");
+    // fallback to localStorage
+    try { localStorage.setItem("finanzas_backup", JSON.stringify(data)); } catch(_){}
+  }
+  isSaving = false;
+}
+
+// Real-time listener: updates all devices instantly
+function startListener() {
+  onSnapshot(DOC_REF, (snap) => {
+    if(snap.exists()) {
+      const remote = snap.data();
+      if(!isSaving) {
+        data = {
+          sueldo: remote.sueldo || 0,
+          gastos: remote.gastos || [],
+          fijos: remote.fijos || [],
+          ahorros: remote.ahorros || [],
+          inversiones: remote.inversiones || [],
+          deudas: remote.deudas || [],
+        };
+        renderAll();
+        setSyncDot("ok");
+      }
+    }
+  }, (err) => {
+    console.error(err);
+    setSyncDot("error");
+  });
+}
+
+async function initData() {
+  try {
+    const snap = await getDoc(DOC_REF);
+    if(snap.exists()) {
+      const d = snap.data();
+      data = {
+        sueldo: d.sueldo || 0,
+        gastos: d.gastos || [],
+        fijos: d.fijos || [],
+        ahorros: d.ahorros || [],
+        inversiones: d.inversiones || [],
+        deudas: d.deudas || [],
+      };
+    } else {
+      // Try migrate from localStorage backup
+      try {
+        const backup = localStorage.getItem("finanzas_v1") || localStorage.getItem("finanzas_backup");
+        if(backup) { data = JSON.parse(backup); await saveToFirebase(); }
+      } catch(_){}
+    }
+  } catch(e) {
+    console.error(e);
+    setSyncDot("error");
+    try {
+      const backup = localStorage.getItem("finanzas_v1") || localStorage.getItem("finanzas_backup");
+      if(backup) data = JSON.parse(backup);
+    } catch(_){}
+  }
+  document.getElementById("loadingScreen").style.display = "none";
+  buildMonthSelect();
+  renderAll();
+  startListener();
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function fmt(n) { return "$" + Number(n||0).toLocaleString("es-AR", {minimumFractionDigits:0}); }
+function getCat(id) { return CATS.find(c=>c.id===id) || CATS[7]; }
+function today() { return new Date().toISOString().split("T")[0]; }
+function dateStr(d) { return new Date(d+"T12:00:00").toLocaleDateString("es-AR",{day:"numeric",month:"short"}); }
+function inMonth(ds) { const d=new Date(ds+"T12:00:00"); return d.getMonth()===filterMonth && d.getFullYear()===filterYear; }
+function showToast(msg) {
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.style.display="block";
+  setTimeout(()=>t.style.display="none", 2400);
+}
+
+// ─── MONTH SELECT ─────────────────────────────────────────────────────────────
+function buildMonthSelect() {
+  const sel=document.getElementById("monthSelect");
+  sel.innerHTML="";
+  for(let i=0;i<12;i++){
+    const o=document.createElement("option");
+    o.value=i; o.textContent=MONTHS[i]+" "+filterYear;
+    if(i===filterMonth) o.selected=true;
+    sel.appendChild(o);
+  }
+  sel.onchange=()=>{ filterMonth=parseInt(sel.value); renderAll(); };
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+window.switchView = function(name) {
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.querySelectorAll(".bottom-nav button").forEach((b,i)=>{
+    b.classList.toggle("active",["resumen","agregar","historial","sueldo","deudas"][i]===name);
+  });
+  document.getElementById("view-"+name).classList.add("active");
+  if(name==="agregar") buildAddTab();
+  if(name==="historial") buildHistTab();
+  if(name==="sueldo") buildSueldo();
+  if(name==="deudas") buildDeudas();
+}
+
+// ─── RENDER ALL ──────────────────────────────────────────────────────────────
+function renderAll() {
+  filterMonth = parseInt(document.getElementById("monthSelect").value);
+  const gastosM  = data.gastos.filter(e=>inMonth(e.date));
+  const fijosT   = data.fijos.reduce((s,f)=>s+f.amount,0);
+  const ahorrosM = data.ahorros.filter(e=>inMonth(e.date)).reduce((s,e)=>s+e.amount,0);
+  const invM     = data.inversiones.filter(e=>inMonth(e.date)).reduce((s,e)=>s+e.amount,0);
+  const varsT    = gastosM.reduce((s,e)=>s+e.amount,0);
+  const saldo    = data.sueldo - fijosT - varsT - ahorrosM - invM;
+
+  document.getElementById("res-saldo").textContent = fmt(saldo);
+  document.getElementById("res-saldo").style.color = saldo>=0 ? "#c9a84c" : "#e05a5a";
+  document.getElementById("res-sub").textContent = "Sueldo: "+fmt(data.sueldo);
+  document.getElementById("res-fijos").textContent = fmt(fijosT);
+  document.getElementById("res-variables").textContent = fmt(varsT);
+  document.getElementById("res-ahorro").textContent = fmt(ahorrosM);
+  document.getElementById("res-inversion").textContent = fmt(invM);
+
+  const byCat = CATS.map(c=>({...c, total:gastosM.filter(e=>e.category===c.id).reduce((s,e)=>s+e.amount,0)}))
+    .filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+  const maxC = byCat[0]?.total||1;
+  const catDiv = document.getElementById("res-catBreakdown");
+  catDiv.innerHTML = byCat.length===0
+    ? `<div class="empty"><div class="icon">📊</div>Sin gastos variables este mes.</div>`
+    : `<div class="section-title">Gastos por categoría</div>` +
+      byCat.map(c=>`<div class="progress-wrap">
+        <div class="progress-info"><span class="progress-name">${c.emoji} ${c.label}</span><span class="progress-val">${fmt(c.total)}</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${(c.total/maxC)*100}%;background:${c.color}"></div></div>
+      </div>`).join("");
+
+  if(document.getElementById("view-sueldo").classList.contains("active")) buildSueldo();
+  if(document.getElementById("view-historial").classList.contains("active")) buildHistTab();
+  if(document.getElementById("view-deudas").classList.contains("active")) buildDeudas();
+}
+
+// ─── ADD TAB ─────────────────────────────────────────────────────────────────
+window.switchAddTab = function(tab) {
+  addTab=tab;
+  document.querySelectorAll("#view-agregar .inner-tab").forEach((b,i)=>{
+    b.classList.toggle("active",["gasto","ahorro","inversion","fijo"][i]===tab);
+  });
+  buildAddTab();
+}
+
+function buildAddTab() {
+  const c=document.getElementById("addTabContent");
+  if(addTab==="gasto") {
+    c.innerHTML=`
+      <div class="field"><label>Descripción</label><input type="text" id="gDesc" placeholder="ej. Supermercado…" oninput="updateBtn('gBtn','gDesc','gAmt')"></div>
+      <div class="field"><label>Monto</label><input type="number" id="gAmt" class="big" placeholder="0" oninput="updateBtn('gBtn','gDesc','gAmt')"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="gDate" value="${today()}"></div>
+      <div class="field"><label>Categoría</label><div class="cat-grid">${catGridHTML()}</div></div>
+      <button class="btn-primary" id="gBtn" onclick="addGasto()" disabled>Registrar gasto</button>`;
+  } else if(addTab==="ahorro") {
+    c.innerHTML=`
+      <div class="field"><label>Descripción</label><input type="text" id="aDesc" placeholder="ej. Caja de ahorro…" oninput="updateBtn('aBtn','aDesc','aAmt')"></div>
+      <div class="field"><label>Monto</label><input type="number" id="aAmt" class="big" placeholder="0" oninput="updateBtn('aBtn','aDesc','aAmt')"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="aDate" value="${today()}"></div>
+      <button class="btn-primary" id="aBtn" onclick="addAhorro()" disabled>Registrar ahorro</button>`;
+  } else if(addTab==="inversion") {
+    c.innerHTML=`
+      <div class="field"><label>Descripción</label><input type="text" id="iDesc" placeholder="ej. Plazo fijo, cripto…" oninput="updateBtn('iBtn','iDesc','iAmt')"></div>
+      <div class="field"><label>Monto</label><input type="number" id="iAmt" class="big" placeholder="0" oninput="updateBtn('iBtn','iDesc','iAmt')"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="iDate" value="${today()}"></div>
+      <button class="btn-primary" id="iBtn" onclick="addInversion()" disabled>Registrar inversión</button>`;
+  } else if(addTab==="fijo") {
+    const list = data.fijos.length===0
+      ? `<div class="empty"><div class="icon">📌</div>Sin gastos fijos aún.</div>`
+      : data.fijos.map(f=>`
+          <div class="expense-item">
+            <span style="font-size:18px">${f.emoji||"📌"}</span>
+            <div class="expense-info"><div class="expense-desc">${f.desc}</div><div class="expense-meta">Mensual fijo</div></div>
+            <div class="expense-right"><div class="expense-amount">${fmt(f.amount)}</div>
+            <button class="btn-delete" onclick="deleteFijo(${f.id})">✕</button></div>
+          </div>`).join("");
+    c.innerHTML=`
+      <div style="font-family:sans-serif;font-size:11px;color:#6b6350;margin-bottom:12px">Se descuentan del sueldo todos los meses automáticamente.</div>
+      <div class="field"><label>Descripción</label><input type="text" id="fDesc" placeholder="ej. Alquiler, expensas…" oninput="updateBtn('fBtn','fDesc','fAmt')"></div>
+      <div class="field"><label>Monto</label><input type="number" id="fAmt" class="big" placeholder="0" oninput="updateBtn('fBtn','fDesc','fAmt')"></div>
+      <button class="btn-primary" id="fBtn" onclick="addFijo()" disabled>Agregar gasto fijo</button>
+      <div class="section-title">Fijos registrados</div>${list}`;
+  }
+}
+
+function catGridHTML() {
+  return CATS.map(c=>`
+    <button class="cat-btn${c.id===selectedCat?' selected':''}" style="--cc:${c.color}" onclick="selCat('${c.id}')">
+      <span class="ce">${c.emoji}</span><span class="cl">${c.label}</span>
+    </button>`).join("");
+}
+
+window.selCat = function(id) { selectedCat=id; buildAddTab(); }
+window.updateBtn = function(btnId,descId,amtId) {
+  const d=document.getElementById(descId)?.value.trim();
+  const a=document.getElementById(amtId)?.value;
+  const btn=document.getElementById(btnId);
+  if(btn) btn.disabled=!d||!a||isNaN(parseFloat(a));
+}
+
+window.addGasto = function() {
+  const desc=document.getElementById("gDesc").value.trim();
+  const amount=parseFloat(document.getElementById("gAmt").value);
+  const date=document.getElementById("gDate").value;
+  if(!desc||isNaN(amount)) return;
+  data.gastos.unshift({id:Date.now(),desc,amount,category:selectedCat,date});
+  saveToFirebase(); renderAll(); selectedCat="alimentacion"; buildAddTab(); showToast("¡Gasto registrado!");
+}
+window.addAhorro = function() {
+  const desc=document.getElementById("aDesc").value.trim();
+  const amount=parseFloat(document.getElementById("aAmt").value);
+  const date=document.getElementById("aDate").value;
+  if(!desc||isNaN(amount)) return;
+  data.ahorros.unshift({id:Date.now(),desc,amount,date});
+  saveToFirebase(); renderAll(); buildAddTab(); showToast("¡Ahorro registrado!");
+}
+window.addInversion = function() {
+  const desc=document.getElementById("iDesc").value.trim();
+  const amount=parseFloat(document.getElementById("iAmt").value);
+  const date=document.getElementById("iDate").value;
+  if(!desc||isNaN(amount)) return;
+  data.inversiones.unshift({id:Date.now(),desc,amount,date});
+  saveToFirebase(); renderAll(); buildAddTab(); showToast("¡Inversión registrada!");
+}
+window.addFijo = function() {
+  const desc=document.getElementById("fDesc").value.trim();
+  const amount=parseFloat(document.getElementById("fAmt").value);
+  if(!desc||isNaN(amount)) return;
+  data.fijos.unshift({id:Date.now(),desc,amount,emoji:"📌"});
+  saveToFirebase(); renderAll(); buildAddTab(); showToast("¡Gasto fijo agregado!");
+}
+window.deleteFijo = function(id) {
+  data.fijos=data.fijos.filter(f=>f.id!==id);
+  saveToFirebase(); renderAll(); buildAddTab(); showToast("Eliminado");
+}
+
+// ─── HISTORIAL ────────────────────────────────────────────────────────────────
+window.switchHistTab = function(tab) {
+  histTab=tab;
+  document.querySelectorAll("#view-historial .inner-tab").forEach((b,i)=>{
+    b.classList.toggle("active",["gastos","fijos","ahorro","inversion"][i]===tab);
+  });
+  buildHistTab();
+}
+
+window.gastoAFijo = function(id) {
+  const e=data.gastos.find(g=>g.id===id);
+  if(!e) return;
+  data.fijos.unshift({id:Date.now(),desc:e.desc,amount:e.amount,emoji:getCat(e.category).emoji});
+  data.gastos=data.gastos.filter(g=>g.id!==id);
+  saveToFirebase(); renderAll(); buildHistTab(); showToast("Pasado a gasto fijo 📌");
+}
+window.fijoAVariable = function(id) {
+  const f=data.fijos.find(x=>x.id===id);
+  if(!f) return;
+  data.gastos.unshift({id:Date.now(),desc:f.desc,amount:f.amount,category:"otros",date:today()});
+  data.fijos=data.fijos.filter(x=>x.id!==id);
+  saveToFirebase(); renderAll(); buildHistTab(); showToast("Pasado a gasto variable ↕");
+}
+
+function buildHistTab() {
+  const c=document.getElementById("histContent");
+  if(histTab==="gastos") {
+    const items=data.gastos.filter(e=>inMonth(e.date));
+    const total=items.reduce((s,e)=>s+e.amount,0);
+    if(items.length===0){ c.innerHTML=`<div class="empty"><div class="icon">📋</div>Sin gastos este mes.</div>`; return; }
+    c.innerHTML=`<div style="display:flex;justify-content:space-between;font-family:sans-serif;font-size:12px;color:#6b6350;margin-bottom:14px"><span>${items.length} gastos</span><span style="color:#c9a84c">${fmt(total)}</span></div>`+
+      items.map(e=>{
+        const cat=getCat(e.category);
+        return `<div class="expense-item">
+          <div class="expense-icon" style="background:${cat.color}20">${cat.emoji}</div>
+          <div class="expense-info"><div class="expense-desc">${e.desc}</div><div class="expense-meta">${dateStr(e.date)} · ${cat.label}</div></div>
+          <div class="expense-right">
+            <div class="expense-amount">${fmt(e.amount)}</div>
+            <button class="btn-delete" onclick="gastoAFijo(${e.id})" style="color:#c9a84c">→ Pasar a fijo</button>
+            <button class="btn-delete" onclick="deleteGasto(${e.id})">Eliminar</button>
+          </div></div>`;
+      }).join("");
+  } else if(histTab==="fijos") {
+    if(data.fijos.length===0){ c.innerHTML=`<div class="empty"><div class="icon">📌</div>Sin gastos fijos.</div>`; return; }
+    const total=data.fijos.reduce((s,f)=>s+f.amount,0);
+    c.innerHTML=`<div style="display:flex;justify-content:space-between;font-family:sans-serif;font-size:12px;color:#6b6350;margin-bottom:14px"><span>${data.fijos.length} fijos</span><span style="color:#e05a5a">${fmt(total)}/mes</span></div>`+
+      data.fijos.map(f=>`
+        <div class="expense-item">
+          <div class="expense-icon" style="background:#e05a5a20">📌</div>
+          <div class="expense-info"><div class="expense-desc">${f.desc}</div><div class="expense-meta">Mensual fijo</div></div>
+          <div class="expense-right">
+            <div class="expense-amount">${fmt(f.amount)}</div>
+            <button class="btn-delete" onclick="fijoAVariable(${f.id})" style="color:#f97316">→ Pasar a variable</button>
+            <button class="btn-delete" onclick="deleteFijoHist(${f.id})">Eliminar</button>
+          </div></div>`).join("");
+  } else if(histTab==="ahorro") {
+    const items=data.ahorros.filter(e=>inMonth(e.date));
+    const total=items.reduce((s,e)=>s+e.amount,0);
+    if(items.length===0){ c.innerHTML=`<div class="empty"><div class="icon">🐷</div>Sin ahorros este mes.</div>`; return; }
+    c.innerHTML=`<div style="display:flex;justify-content:space-between;font-family:sans-serif;font-size:12px;color:#6b6350;margin-bottom:14px"><span>${items.length} registros</span><span style="color:#4ade80">${fmt(total)}</span></div>`+
+      items.map(e=>`
+        <div class="expense-item">
+          <div class="expense-icon" style="background:#4ade8020">🐷</div>
+          <div class="expense-info"><div class="expense-desc">${e.desc}</div><div class="expense-meta">${dateStr(e.date)}</div></div>
+          <div class="expense-right"><div class="expense-amount" style="color:#4ade80">${fmt(e.amount)}</div>
+          <button class="btn-delete" onclick="deleteAhorro(${e.id})">Eliminar</button></div></div>`).join("");
+  } else if(histTab==="inversion") {
+    const items=data.inversiones.filter(e=>inMonth(e.date));
+    const total=items.reduce((s,e)=>s+e.amount,0);
+    if(items.length===0){ c.innerHTML=`<div class="empty"><div class="icon">📈</div>Sin inversiones este mes.</div>`; return; }
+    c.innerHTML=`<div style="display:flex;justify-content:space-between;font-family:sans-serif;font-size:12px;color:#6b6350;margin-bottom:14px"><span>${items.length} registros</span><span style="color:#06b6d4">${fmt(total)}</span></div>`+
+      items.map(e=>`
+        <div class="expense-item">
+          <div class="expense-icon" style="background:#06b6d420">📈</div>
+          <div class="expense-info"><div class="expense-desc">${e.desc}</div><div class="expense-meta">${dateStr(e.date)}</div></div>
+          <div class="expense-right"><div class="expense-amount" style="color:#06b6d4">${fmt(e.amount)}</div>
+          <button class="btn-delete" onclick="deleteInversion(${e.id})">Eliminar</button></div></div>`).join("");
+  }
+}
+
+window.deleteGasto = function(id){ data.gastos=data.gastos.filter(e=>e.id!==id); saveToFirebase(); renderAll(); buildHistTab(); showToast("Eliminado"); }
+window.deleteFijoHist = function(id){ data.fijos=data.fijos.filter(f=>f.id!==id); saveToFirebase(); renderAll(); buildHistTab(); showToast("Eliminado"); }
+window.deleteAhorro = function(id){ data.ahorros=data.ahorros.filter(e=>e.id!==id); saveToFirebase(); renderAll(); buildHistTab(); showToast("Eliminado"); }
+window.deleteInversion = function(id){ data.inversiones=data.inversiones.filter(e=>e.id!==id); saveToFirebase(); renderAll(); buildHistTab(); showToast("Eliminado"); }
+
+// ─── SUELDO ───────────────────────────────────────────────────────────────────
+window.saveSueldo = function() {
+  const v=parseFloat(document.getElementById("sueldoInput").value);
+  if(isNaN(v)||v<=0) return;
+  data.sueldo=v;
+  document.getElementById("sueldoInput").value="";
+  saveToFirebase(); renderAll(); buildSueldo(); showToast("Sueldo actualizado");
+}
+
+function buildSueldo() {
+  document.getElementById("sue-monto").textContent=fmt(data.sueldo);
+  const gastosM=data.gastos.filter(e=>inMonth(e.date));
+  const fijosT=data.fijos.reduce((s,f)=>s+f.amount,0);
+  const ahorrosT=data.ahorros.filter(e=>inMonth(e.date)).reduce((s,e)=>s+e.amount,0);
+  const invT=data.inversiones.filter(e=>inMonth(e.date)).reduce((s,e)=>s+e.amount,0);
+  const varsT=gastosM.reduce((s,e)=>s+e.amount,0);
+  const saldo=data.sueldo-fijosT-varsT-ahorrosT-invT;
+  const sue=data.sueldo||1;
+  document.getElementById("bar-fijos").style.width=Math.min((fijosT/sue)*100,100)+"%";
+  document.getElementById("bar-variables").style.width=Math.min((varsT/sue)*100,100)+"%";
+  document.getElementById("bar-ahorro").style.width=Math.min((ahorrosT/sue)*100,100)+"%";
+  document.getElementById("bar-inversion").style.width=Math.min((invT/sue)*100,100)+"%";
+  const rows=[
+    {label:"Sueldo",val:data.sueldo,color:"#c9a84c",type:"neutral"},
+    {label:"— Gastos fijos",val:fijosT,color:"#e05a5a",type:"negative"},
+    {label:"— Gastos variables",val:varsT,color:"#f97316",type:"negative"},
+    {label:"— Ahorro",val:ahorrosT,color:"#4ade80",type:"negative"},
+    {label:"— Inversión",val:invT,color:"#06b6d4",type:"negative"},
+  ];
+  document.getElementById("sueldoBreakdown").innerHTML=
+    `<div class="section-title">Distribución del sueldo</div>`+
+    rows.map(r=>`<div class="breakdown-row">
+      <span class="name"><span class="dot" style="background:${r.color}"></span>${r.label}</span>
+      <span class="val ${r.type==='negative'?'negative':''}">${r.type==='negative'?'- ':''}${fmt(r.val)}</span>
+    </div>`).join("")+
+    `<div class="breakdown-row" style="margin-top:4px;border-top:1px solid #3a3020;padding-top:12px">
+      <span class="name" style="font-weight:bold;color:#f5f0e8">Saldo disponible</span>
+      <span class="val ${saldo>=0?'positive':'negative'}" style="font-size:16px">${fmt(saldo)}</span>
+    </div>`;
+}
+
+// ─── DEUDAS ───────────────────────────────────────────────────────────────────
+window.calcCuota = function() {
+  const total=parseFloat(document.getElementById("dAmt")?.value);
+  const cuotas=parseInt(document.getElementById("dCuotas")?.value);
+  const valEl=document.getElementById("dValCuota");
+  if(valEl&&!isNaN(total)&&!isNaN(cuotas)&&cuotas>0) valEl.value=Math.ceil(total/cuotas);
+  else if(valEl) valEl.value="";
+}
+window.updateDBtn = function() {
+  const d=document.getElementById("dDesc")?.value.trim();
+  const a=document.getElementById("dAmt")?.value;
+  const btn=document.getElementById("dBtn");
+  if(btn) btn.disabled=!d||!a||isNaN(parseFloat(a));
+}
+window.addDeuda = function() {
+  const desc=document.getElementById("dDesc").value.trim();
+  const total=parseFloat(document.getElementById("dAmt").value);
+  const cuotas=parseInt(document.getElementById("dCuotas").value)||0;
+  const valCuota=cuotas>0?Math.ceil(total/cuotas):0;
+  if(!desc||isNaN(total)) return;
+  if(!data.deudas) data.deudas=[];
+  data.deudas.push({id:Date.now(),desc,total,cuotas,valCuota,pagos:[]});
+  document.getElementById("dDesc").value="";
+  document.getElementById("dAmt").value="";
+  document.getElementById("dCuotas").value="";
+  document.getElementById("dValCuota").value="";
+  document.getElementById("dBtn").disabled=true;
+  saveToFirebase(); buildDeudas(); showToast("Deuda agregada");
+}
+window.deleteDeuda = function(id) {
+  data.deudas=data.deudas.filter(d=>d.id!==id);
+  saveToFirebase(); buildDeudas(); showToast("Deuda eliminada");
+}
+window.addPago = function(id) {
+  const input=document.getElementById("pago-"+id);
+  const amount=parseFloat(input?.value);
+  if(isNaN(amount)||amount<=0) return;
+  const deuda=data.deudas.find(d=>d.id===id);
+  if(!deuda) return;
+  deuda.pagos.push({id:Date.now(),amount,date:today(),cuotaNum:deuda.cuotas?deuda.pagos.length+1:null});
+  input.value="";
+  saveToFirebase(); buildDeudas(); showToast("¡Pago registrado!");
+}
+window.pagarCuota = function(id) {
+  const deuda=data.deudas.find(d=>d.id===id);
+  if(!deuda||!deuda.valCuota) return;
+  const pagado=deuda.pagos.reduce((s,p)=>s+p.amount,0);
+  if(pagado>=deuda.total) return;
+  const cuotaNum=deuda.pagos.length+1;
+  deuda.pagos.push({id:Date.now(),amount:deuda.valCuota,date:today(),cuotaNum});
+  saveToFirebase(); buildDeudas(); showToast(`Cuota ${cuotaNum} pagada ✓`);
+}
+window.deletePago = function(deudaId,pagoId) {
+  const deuda=data.deudas.find(d=>d.id===deudaId);
+  if(!deuda) return;
+  deuda.pagos=deuda.pagos.filter(p=>p.id!==pagoId);
+  saveToFirebase(); buildDeudas(); showToast("Pago eliminado");
+}
+
+function buildDeudas() {
+  if(!data.deudas) data.deudas=[];
+  const activas=data.deudas.filter(d=>d.pagos.reduce((s,p)=>s+p.amount,0)<d.total);
+  const canceladas=data.deudas.filter(d=>d.pagos.reduce((s,p)=>s+p.amount,0)>=d.total);
+  const totalDeuda=activas.reduce((s,d)=>s+d.total-d.pagos.reduce((p,x)=>p+x.amount,0),0);
+
+  document.getElementById("deudasSummary").innerHTML = activas.length===0&&data.deudas.length>0
+    ? `<div class="card" style="text-align:center"><div style="font-size:28px;margin-bottom:8px">🎉</div><div style="font-family:sans-serif;font-size:14px;color:#4ade80">¡Todas las deudas canceladas!</div></div>`
+    : activas.length===0 ? ""
+    : `<div class="card"><div class="label">Total adeudado</div><div class="amount" style="color:#e05a5a">${fmt(totalDeuda)}</div><div class="sub">${activas.length} deuda${activas.length!==1?'s':''} pendiente${activas.length!==1?'s':''}</div></div>`;
+
+  const listEl=document.getElementById("deudasList");
+  if(data.deudas.length===0){ listEl.innerHTML=`<div class="empty"><div class="icon">✅</div>Agregá tu primera deuda arriba.</div>`; return; }
+
+  listEl.innerHTML=[...activas,...canceladas].map(d=>{
+    const pagado=d.pagos.reduce((s,p)=>s+p.amount,0);
+    const restante=d.total-pagado;
+    const pct=Math.min((pagado/d.total)*100,100);
+    const cancelada=restante<=0;
+    const cuotasPagadas=d.pagos.length;
+    const cuotasRestantes=d.cuotas?d.cuotas-cuotasPagadas:null;
+    let cuotasBar="";
+    if(d.cuotas>0){
+      const pills=Array.from({length:d.cuotas},(_,i)=>{
+        const paid=i<cuotasPagadas;
+        return `<div style="width:${Math.max(16,Math.floor(260/d.cuotas)-2)}px;height:18px;border-radius:4px;background:${paid?'#4ade80':'#1e1a10'};border:1px solid ${paid?'#4ade80':'#2a2519'};display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:${paid?'#0f0e0c':'#4a4535'};font-family:sans-serif;margin:1px">${i+1}</div>`;
+      }).join("");
+      cuotasBar=`<div style="margin:8px 0 4px;line-height:1.6">${pills}</div>
+        <div style="font-family:sans-serif;font-size:11px;color:#6b6350;margin-bottom:8px">
+          ${cuotasPagadas}/${d.cuotas} cuotas · ${fmt(d.valCuota)}/cuota${cuotasRestantes>0?' · Faltan '+cuotasRestantes:''}
+        </div>`;
+    }
+    const pagosHTML=d.pagos.length>0
+      ?`<div style="margin-top:8px;border-top:1px solid #1e1a10;padding-top:8px">`+
+        d.pagos.slice().reverse().map(p=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-family:sans-serif;font-size:11px">
+            <span style="color:#6b6350">${p.cuotaNum?'Cuota '+p.cuotaNum+' — ':''} ${dateStr(p.date)}</span>
+            <span style="color:#4ade80">${fmt(p.amount)}</span>
+            <button onclick="deletePago(${d.id},${p.id})" style="background:none;border:none;color:#2a2519;font-size:10px;cursor:pointer">✕</button>
+          </div>`).join("")+`</div>`:""
+    const btnPago=cancelada?"":d.cuotas>0
+      ?`<div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="pagarCuota(${d.id})" style="flex:1;padding:9px;background:linear-gradient(135deg,#c9a84c,#e8c96a);border:none;border-radius:8px;color:#0f0e0c;font-family:sans-serif;font-size:12px;font-weight:bold;cursor:pointer">
+            Pagar cuota ${cuotasPagadas+1} — ${fmt(d.valCuota)}
+          </button></div>
+         <div style="display:flex;gap:8px;margin-top:6px">
+           <input type="number" id="pago-${d.id}" placeholder="O monto libre" style="flex:1;background:#0f0e0c;border:1px solid #2a2519;border-radius:8px;padding:8px 10px;color:#f5f0e8;font-family:sans-serif;font-size:12px;outline:none">
+           <button onclick="addPago(${d.id})" style="padding:8px 12px;background:#2a2519;border:none;border-radius:8px;color:#c9a84c;font-family:sans-serif;font-size:12px;cursor:pointer">Pagar</button>
+         </div>`
+      :`<div style="display:flex;gap:8px;margin-top:8px">
+          <input type="number" id="pago-${d.id}" placeholder="Monto del pago" style="flex:1;background:#0f0e0c;border:1px solid #2a2519;border-radius:8px;padding:8px 10px;color:#f5f0e8;font-family:sans-serif;font-size:13px;outline:none">
+          <button onclick="addPago(${d.id})" style="padding:8px 12px;background:#c9a84c;border:none;border-radius:8px;color:#0f0e0c;font-family:sans-serif;font-size:12px;font-weight:bold;cursor:pointer">Pagar</button>
+        </div>`;
+    return `
+      <div style="background:#1a1810;border:1px solid ${cancelada?'#2a4a2a':'#3a2020'};border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div>
+            <div style="font-family:sans-serif;font-size:14px;color:${cancelada?'#4ade80':'#d4c9a8'};font-weight:bold">${d.desc}${cancelada?' <span style="font-size:11px;font-weight:normal">✓ Cancelada</span>':''}</div>
+            <div style="font-family:sans-serif;font-size:11px;color:#6b6350;margin-top:2px">Total: ${fmt(d.total)} · Pagado: ${fmt(pagado)}</div>
+          </div>
+          <button onclick="deleteDeuda(${d.id})" style="background:none;border:none;color:#3a3020;font-size:13px;cursor:pointer;padding:0">✕</button>
+        </div>
+        ${cuotasBar}
+        <div class="bar-bg" style="margin-bottom:5px"><div class="bar-fill" style="width:${pct}%;background:${cancelada?'#4ade80':'#e05a5a'}"></div></div>
+        <div style="display:flex;justify-content:space-between;font-family:sans-serif;font-size:11px;color:#6b6350;margin-bottom:4px">
+          <span>${pct.toFixed(0)}% pagado</span>
+          <span style="color:${cancelada?'#4ade80':'#e05a5a'}">${cancelada?'¡Cancelada!':'Resta '+fmt(restante)}</span>
+        </div>
+        ${btnPago}${pagosHTML}
+      </div>`;
+  }).join("");
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+initData();
+</script>
+</body>
+</html>

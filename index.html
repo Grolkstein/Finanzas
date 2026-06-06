@@ -354,20 +354,38 @@ window.switchView = function(name) {
 }
 
 // ─── RENDER ALL ──────────────────────────────────────────────────────────────
+function getPagosDelMes() {
+  if(!data.deudas) return [];
+  return data.deudas.flatMap(d =>
+    (d.pagos||[]).filter(p=>inMonth(p.date)).map(p=>({
+      id: p.id,
+      desc: d.cuotas ? d.desc+' — Cuota '+p.cuotaNum : d.desc+' — Pago',
+      amount: p.amount,
+      category: "deuda",
+      date: p.date,
+      esDeuda: true,
+      deudaId: d.id,
+      pagoId: p.id,
+    }))
+  );
+}
+
 function renderAll() {
   filterMonth = parseInt(document.getElementById("monthSelect").value);
   const gastosM  = data.gastos.filter(e=>inMonth(e.date));
+  const pagosM   = getPagosDelMes();
   const fijosT   = data.fijos.reduce((s,f)=>s+f.amount,0);
   const ahorrosM = data.ahorros.filter(e=>inMonth(e.date)).reduce((s,e)=>s+e.amount,0);
   const invM     = data.inversiones.filter(e=>inMonth(e.date)).reduce((s,e)=>s+e.amount,0);
   const varsT    = gastosM.reduce((s,e)=>s+e.amount,0);
-  const saldo    = data.sueldo - fijosT - varsT - ahorrosM - invM;
+  const pagosT   = pagosM.reduce((s,e)=>s+e.amount,0);
+  const saldo    = data.sueldo - fijosT - varsT - pagosT - ahorrosM - invM;
 
   document.getElementById("res-saldo").textContent = fmt(saldo);
   document.getElementById("res-saldo").style.color = saldo>=0 ? "#c9a84c" : "#e05a5a";
   document.getElementById("res-sub").textContent = "Sueldo: "+fmt(data.sueldo);
   document.getElementById("res-fijos").textContent = fmt(fijosT);
-  document.getElementById("res-variables").textContent = fmt(varsT);
+  document.getElementById("res-variables").textContent = fmt(varsT + pagosT);
   document.getElementById("res-ahorro").textContent = fmt(ahorrosM);
   document.getElementById("res-inversion").textContent = fmt(invM);
 
@@ -515,11 +533,22 @@ window.fijoAVariable = function(id) {
 function buildHistTab() {
   const c=document.getElementById("histContent");
   if(histTab==="gastos") {
-    const items=data.gastos.filter(e=>inMonth(e.date));
+    const gastos=data.gastos.filter(e=>inMonth(e.date));
+    const pagos=getPagosDelMes();
+    const items=[...gastos,...pagos].sort((a,b)=>b.date.localeCompare(a.date));
     const total=items.reduce((s,e)=>s+e.amount,0);
     if(items.length===0){ c.innerHTML=`<div class="empty"><div class="icon">📋</div>Sin gastos este mes.</div>`; return; }
-    c.innerHTML=`<div style="display:flex;justify-content:space-between;font-family:sans-serif;font-size:12px;color:#6b6350;margin-bottom:14px"><span>${items.length} gastos</span><span style="color:#c9a84c">${fmt(total)}</span></div>`+
+    c.innerHTML=`<div style="display:flex;justify-content:space-between;font-family:sans-serif;font-size:12px;color:#6b6350;margin-bottom:14px"><span>${items.length} movimientos</span><span style="color:#c9a84c">${fmt(total)}</span></div>`+
       items.map(e=>{
+        if(e.esDeuda) {
+          return `<div class="expense-item">
+            <div class="expense-icon" style="background:#a855f720">🔴</div>
+            <div class="expense-info"><div class="expense-desc">${e.desc}</div><div class="expense-meta">${dateStr(e.date)} · Deuda</div></div>
+            <div class="expense-right">
+              <div class="expense-amount" style="color:#a855f7">${fmt(e.amount)}</div>
+              <button class="btn-delete" onclick="deletePago(${e.deudaId},${e.pagoId})">Eliminar</button>
+            </div></div>`;
+        }
         const cat=getCat(e.category);
         return `<div class="expense-item">
           <div class="expense-icon" style="background:${cat.color}20">${cat.emoji}</div>
@@ -585,20 +614,23 @@ window.saveSueldo = function() {
 function buildSueldo() {
   document.getElementById("sue-monto").textContent=fmt(data.sueldo);
   const gastosM=data.gastos.filter(e=>inMonth(e.date));
+  const pagosM=getPagosDelMes();
   const fijosT=data.fijos.reduce((s,f)=>s+f.amount,0);
   const ahorrosT=data.ahorros.filter(e=>inMonth(e.date)).reduce((s,e)=>s+e.amount,0);
   const invT=data.inversiones.filter(e=>inMonth(e.date)).reduce((s,e)=>s+e.amount,0);
   const varsT=gastosM.reduce((s,e)=>s+e.amount,0);
-  const saldo=data.sueldo-fijosT-varsT-ahorrosT-invT;
+  const pagosT=pagosM.reduce((s,e)=>s+e.amount,0);
+  const saldo=data.sueldo-fijosT-varsT-pagosT-ahorrosT-invT;
   const sue=data.sueldo||1;
   document.getElementById("bar-fijos").style.width=Math.min((fijosT/sue)*100,100)+"%";
-  document.getElementById("bar-variables").style.width=Math.min((varsT/sue)*100,100)+"%";
+  document.getElementById("bar-variables").style.width=Math.min(((varsT+pagosT)/sue)*100,100)+"%";
   document.getElementById("bar-ahorro").style.width=Math.min((ahorrosT/sue)*100,100)+"%";
   document.getElementById("bar-inversion").style.width=Math.min((invT/sue)*100,100)+"%";
   const rows=[
     {label:"Sueldo",val:data.sueldo,color:"#c9a84c",type:"neutral"},
     {label:"— Gastos fijos",val:fijosT,color:"#e05a5a",type:"negative"},
     {label:"— Gastos variables",val:varsT,color:"#f97316",type:"negative"},
+    {label:"— Cuotas/deudas",val:pagosT,color:"#a855f7",type:"negative"},
     {label:"— Ahorro",val:ahorrosT,color:"#4ade80",type:"negative"},
     {label:"— Inversión",val:invT,color:"#06b6d4",type:"negative"},
   ];
